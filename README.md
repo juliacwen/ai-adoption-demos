@@ -1,4 +1,7 @@
 # AI Adoption Demos — Payments Module
+=======
+
+# AI Adoption Demos
 
 **Author:** Julia Wen (wendigilane@gmail.com)  
 **License:** MIT
@@ -66,3 +69,4 @@ Payments/
 ---
 
 **MIT License**
+This repo contains **practical AI demos** showing how AI can be applied in real-world workflows.
