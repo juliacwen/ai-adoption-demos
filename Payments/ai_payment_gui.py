@@ -2,8 +2,8 @@
 """
 ai_payment_gui.py
 Author: Julia Wen
-Date: 2025-09-26
-Description: GUI part for AI payment demo GUI
+Date: 2025-09-28
+Description: GUI part for AI payment demo GUI. It imports ai_payment_core.py
 """
 import streamlit as st
 import pandas as pd
@@ -21,7 +21,7 @@ st.set_page_config(page_title="AI Payment Demo", layout="wide")
 # ---------------------------
 # Sidebar role selector
 # ---------------------------
-role = st.sidebar.selectbox("Select Role", ["Customer", "Admin"])
+role = st.sidebar.selectbox("Select Role", ["Admin", "Customer"], index=0)
 st.session_state['role'] = role
 
 # ---------------------------
