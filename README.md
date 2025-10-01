@@ -9,7 +9,7 @@ This repo contains **practical AI demos** showing how AI can be applied in real-
 ## Demos
 
 ### 💳 Payments
-End-to-end payment processing with AI fraud detection.  
+End-to-end payment processing with AI fraud detection.
 - Streamlit app  
-- Batch & single transaction support  
+- Including single transactions, refund and batch CSV uploads, PostgreSQL database, and yaml config.
 [See Payments Demo →](Payments/README.md)

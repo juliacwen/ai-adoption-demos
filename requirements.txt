@@ -4,4 +4,8 @@ numpy
 scikit-learn
 altair
 pyngrok
-
+joblib
+sqlalchemy
+psycopg2-binary
+shap
+Torch

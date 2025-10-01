@@ -1,0 +1,89 @@
+fraud_model:
+  artifact_path: fraud_model_artifact.joblib
+  train_csv: sandbox_transactions.csv
+  random_state: 42
+  num_synthetic_transactions_cpu: 1000
+  num_synthetic_transactions_gpu: 10000
+  rf_n_estimators: 200
+  timeout_seconds: 30
+
+data:
+  test_card_set:
+    - "4242424242424242"  # Visa
+    - "4000056655665556"  # Visa debit
+    - "5555555555554444"  # Mastercard
+    - "2223003122003222"  # Mastercard (2-series)
+    - "378282246310005"   # Amex
+    - "6011111111111117"  # Discover
+    - "30569309025904"    # Diners Club
+    - "3566002020360505"  # JCB
+
+  names:
+    - Alice
+    - Bob
+    - Carol
+    - Dave
+    - Eve
+    - Frank
+    - Grace
+    - Hank
+    - Ivy
+    - Jack
+    - Karen
+    - Leo
+    - Mia
+    - Nina
+    - Oscar
+    - Pam
+    - Test
+
+  payment_methods:
+    values: ["Card", "Apple Pay", "Google Pay", "PayPal"]
+    probs: [0.6, 0.13, 0.13, 0.14]
+
+  devices:
+    values: ["mobile", "desktop", "tablet"]
+    probs: [0.6, 0.3, 0.1]
+
+  countries:
+    values: ["US", "GB", "CA", "AU", "IN", "NG", "RU"]
+    probs: [0.5, 0.12, 0.1, 0.08, 0.08, 0.06, 0.06]
+
+  tokens:
+    suffixes: ["success", "fail", "flagged"]
+    probs: [0.75, 0.18, 0.07]
+
+thresholds:
+  amount_high: 200
+  amount_very_high: 1000
+  amount_ip_risk: 300
+  past_txns: 5
+  mobile_low_amount: 5
+
+weights:
+  score_flagged: 0.4
+  score_rejected: 0.7
+  amount_high_score: 0.25
+  amount_very_high_score: 0.5
+  ip_risk_weight: 0.15
+  fail_score: 0.6
+  flagged_score: 0.8
+  country_risk_score: 0.4
+  past_txns_penalty: 0.2
+  mobile_low_amount_bonus: 0.15
+  jitter_std: 0.05
+
+validation:
+  min_card_digits: 12
+  max_card_digits: 19
+  cvv_lengths: [3, 4]
+  expiry_format: "MM/YYYY"
+  expiry_two_digit_year_base: 2000
+
+defaults:
+  country: "US"
+
+fraud:
+  large_amount_threshold: 500.0
+  high_risk_countries: ["NG", "RU"]
+  tiny_amount_threshold: 5
