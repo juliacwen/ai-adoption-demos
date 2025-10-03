@@ -9,3 +9,8 @@ sqlalchemy
 psycopg2-binary
 shap
 Torch
+fastapi
+uvicorn 
+python-multipart
+
+

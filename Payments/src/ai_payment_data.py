@@ -1,5 +1,11 @@
-"""ai_payment_data.py
-Refactored to read constants from ai_payment_config.yaml
+
+"""
+ai_payment_data.py
+Author: Julia Wen
+Date: 2025-10-02
+Description: 
+Generates synthetic transactions and trains a RandomForest pipeline if no artifact exists.
+Read constants from ai_payment_config.yaml
 Exports: train_or_load_pipeline, generate_synthetic_transactions, label_synthetic, ARTIFACT_PATH
 """
 

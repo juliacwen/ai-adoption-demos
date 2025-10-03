@@ -1,7 +1,7 @@
 """
 ai_payment_core.py
 Author: Julia Wen
-Date: 2025-09-28
+Date: 2025-10-01
 
 Description
 -----------
@@ -29,7 +29,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union, IO
 
 import numpy as np
 import pandas as pd
-import yaml
 
 from ai_payment_data import (
     generate_synthetic_transactions,
@@ -39,13 +38,7 @@ from ai_payment_data import (
     TEST_CARD_SET,
 )
 
-# Load config
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "ai_payment_config.yaml")
-if not os.path.exists(CONFIG_PATH):
-    raise FileNotFoundError(f"Missing ai_payment_config.yaml at {CONFIG_PATH}")
-with open(CONFIG_PATH, "r") as f:
-    CONFIG = yaml.safe_load(f)
-
+# -----------------------
 # Logging
 # -----------------------
 logger = logging.getLogger("ai_payment_core")
@@ -61,17 +54,17 @@ if not logger.handlers:
     logger.addHandler(ch)
 logger.debug("ai_payment_core logger initialized")
 
-# Constants from CONFIG
-MIN_CARD_DIGITS = CONFIG.get("validation", {}).get("min_card_digits", 12)
-MAX_CARD_DIGITS = CONFIG.get("validation", {}).get("max_card_digits", 19)
-CVV_LENGTHS = tuple(CONFIG.get("validation", {}).get("cvv_lengths", [3,4]))
-EXPIRY_FORMAT = CONFIG.get("validation", {}).get("expiry_format", "MM/YYYY")
-EXPIRY_TWO_DIGIT_YEAR_BASE = CONFIG.get("validation", {}).get("expiry_two_digit_year_base", 2000)
-DEFAULT_COUNTRY = CONFIG.get("defaults", {}).get("country", "US")
-FRAUD_THRESHOLDS = (CONFIG.get("weights", {}).get("score_flagged", 0.4), CONFIG.get("weights", {}).get("score_rejected", 0.7))
-LARGE_AMOUNT_RISK_THRESHOLD = CONFIG.get("fraud", {}).get("large_amount_threshold", 500.0)
-HIGH_RISK_COUNTRIES = CONFIG.get("fraud", {}).get("high_risk_countries", ["NG","RU"]).copy()
-TINY_AMOUNT_THRESHOLD = CONFIG.get("fraud", {}).get("tiny_amount_threshold", 5)
+# -----------------------
+# Constants
+# -----------------------
+MIN_CARD_DIGITS = 12
+MAX_CARD_DIGITS = 19
+CVV_LENGTHS = (3, 4)
+EXPIRY_FORMAT = "MM/YYYY"
+EXPIRY_TWO_DIGIT_YEAR_BASE = 2000
+DEFAULT_COUNTRY = "US"
+FRAUD_THRESHOLDS = (0.25, 0.6)
+LARGE_AMOUNT_RISK_THRESHOLD = 500.0
 
 # -----------------------
 # Utilities
@@ -301,7 +294,7 @@ def process_payment(transaction: Dict[str,Any],
                     transactions_db: Optional[Union[dict,pd.DataFrame]] = None,
                     debug: bool = False) -> Dict[str,Any]:
     """
-    Validate -> score -> decision -> always assign txn_id -> store if Approved.
+    Validate -> score -> decision -> store if Approved.
     Returns dict: {txn_id, decision, fraud_prob, reason, valid, debug?}
     """
     debug_msgs: List[str] = []
@@ -324,34 +317,43 @@ def process_payment(transaction: Dict[str,Any],
         debug_msgs=debug_msgs
     )
 
-    fraud_prob = 1.0
-    decision = "Rejected ❌"
-    reason_text = ""
+    if not valid:
+        reason_parts = [m for m in debug_msgs if "Validation failed" in m or 
+m.startswith("Validation:")]
+        if not reason_parts:
+            reason_parts = [reason or "Validation failed"]
+        reason_text = "; ".join(reason_parts)
+        out = {
+            "txn_id": None,
+            "decision": "Rejected ❌",
+            "fraud_prob": 1.0,
+            "reason": reason_text,
+            "valid": False
+        }
+        if debug:
+            out["debug"] = debug_msgs
+            logger.debug("process_payment debug: %s", debug_msgs)
+        return out
 
-    if valid:
-        hist_df = None
-        if transactions_db is not None and isinstance(transactions_db, pd.DataFrame):
-            hist_df = transactions_db
-        try:
-            fraud_prob = calculate_fraud_prob(txn, hist_df)
-            debug_msgs.append(f"Model fraud_prob={fraud_prob:.4f}")
-        except Exception as e:
-            logger.exception("Model scoring failed: %s", e)
-            fraud_prob = 1.0
-            debug_msgs.append(f"Model scoring exception: {e}")
+    hist_df = None
+    if transactions_db is not None and isinstance(transactions_db, pd.DataFrame):
+        hist_df = transactions_db
 
-        decision = fraud_decision(fraud_prob)
-        reason_text = _explain_transaction(txn, fraud_prob)
-        debug_msgs.append(f"Decision: {decision} reason: {reason_text}")
-    else:
-        reason_text = reason or "Validation failed"
-        debug_msgs.append(f"Validation failed: {reason_text}")
+    try:
+        fraud_prob = calculate_fraud_prob(txn, hist_df)
+        debug_msgs.append(f"Model fraud_prob={fraud_prob:.4f}")
+    except Exception as e:
+        logger.exception("Model scoring failed: %s", e)
+        fraud_prob = 1.0
+        debug_msgs.append(f"Model scoring exception: {e}")
 
-    # ALWAYS assign a transaction ID
-    txn_id = "TXN-" + uuid.uuid4().hex[:10].upper()
+    decision = fraud_decision(fraud_prob)
+    reason_text = _explain_transaction(txn, fraud_prob)
+    debug_msgs.append(f"Decision: {decision} reason: {reason_text}")
 
-    # Store approved transaction in the dict if applicable
-    if decision == "Approved ✅" and isinstance(transactions_db, dict):
+    txn_id = None
+    if decision == "Approved ✅":
+        txn_id = "TXN-" + uuid.uuid4().hex[:10].upper()
         record = dict(txn)
         record.update({
             "txn_id": txn_id,
@@ -361,15 +363,16 @@ def process_payment(transaction: Dict[str,Any],
             "timestamp": datetime.utcnow().isoformat(),
             "refunded": False
         })
-        transactions_db[txn_id] = record
-        debug_msgs.append(f"Stored approved txn in transactions_db under {txn_id}")
+        if isinstance(transactions_db, dict):
+            transactions_db[txn_id] = record
+            debug_msgs.append(f"Stored approved txn in transactions_db under {txn_id}")
 
     out = {
         "txn_id": txn_id,
         "decision": decision,
         "fraud_prob": float(fraud_prob),
         "reason": reason_text,
-        "valid": valid
+        "valid": True
     }
     if debug:
         out["debug"] = debug_msgs
@@ -377,60 +380,45 @@ def process_payment(transaction: Dict[str,Any],
     return out
 
 def process_refund(txn_id: str, transactions_db: dict) -> bool:
-    """Mark stored transaction as refunded. Only Approved transactions can be refunded."""
+    """Mark stored transaction as refunded."""
     if not txn_id:
         return False
     if txn_id in transactions_db:
         rec = transactions_db[txn_id]
-        if rec.get("decision") != "Approved ✅":
-            # Only allow refund for Approved transactions
-            return False
         if rec.get("refunded", False):
             return False
         rec["refunded"] = True
         rec["refund_timestamp"] = datetime.utcnow().isoformat()
         rec["decision"] = "Refunded ♻️"
         transactions_db[txn_id] = rec
+        logger.debug("process_refund: refunded %s", txn_id)
         return True
+    logger.debug("process_refund: txn_id %s not found", txn_id)
     return False
 
-
-def process_batch(transactions_list: List[dict],
-                  transactions_db: Optional[dict] = None,
-                  debug: bool = False) -> Tuple[List[dict], dict]:
+def process_batch(transactions_list: List[dict], transactions_db: Optional[dict] = None, debug: bool = 
+False) -> Tuple[List[dict], dict]:
     """
     Process batch transactions; returns (results_list, counts_dict)
-    Ensures all transactions (Approved, Flagged, Rejected) have txn_id.
     """
     results = []
-    counts = {"Approved ✅": 0, "Flagged ⚠️": 0, "Rejected ❌": 0}
-
+    counts = {"Approved ✅":0, "Flagged ⚠️":0, "Rejected ❌":0}
     for t in transactions_list:
-        # Process single transaction
         res = process_payment(t, transactions_db, debug=debug)
-
         decision = res.get("decision")
         if decision in counts:
             counts[decision] += 1
-
-        # Include all txn_ids, even for rejected/flagged
-        txn_id = res.get("txn_id")
-        if not txn_id:
-            # Safety fallback (should not happen with fixed process_payment)
-            txn_id = "TXN-" + uuid.uuid4().hex[:10].upper()
-
         results.append({
-            "txn_id": txn_id,
-            "name": t.get("name", ""),
-            "email": t.get("email", ""),
-            "amount": float(t.get("amount", 0.0) or 0.0),
-            "payment_method": t.get("payment_method", ""),
+            "txn_id": res.get("txn_id"),
+            "name": t.get("name",""),
+            "email": t.get("email",""),
+            "amount": float(t.get("amount",0.0) or 0.0),
+            "payment_method": t.get("payment_method",""),
             "fraud_prob": float(res.get("fraud_prob", 1.0)),
             "decision": decision,
-            "reason": res.get("reason", ""),
+            "reason": res.get("reason",""),
             "debug": res.get("debug") if debug else None
         })
-
     return results, counts
 
 # -----------------------

@@ -7,7 +7,7 @@
 **License:** MIT
 
 ## Overview
-This repository demonstrates AI adoption in payment workflows. The `Payments` module provides a **Streamlit GUI** for processing payments, including single transactions, refund and batch CSV uploads, with fraud detection powered by a trained model, PostgreSQL database, and yaml config.
+This repository demonstrates AI adoption in payment workflows. The `Payments` module provides a **Streamlit GUI** for processing payments, including single transactions, refund and batch CSV uploads, with fraud detection powered by a trained model, PostgreSQL database, and yaml config, and RESTful API with FastAPI.
 
 ### Features
 - Single transaction input (card or wallet)
@@ -65,6 +65,7 @@ Open the displayed URL in your browser to interact with the dashboard.
 ## File Structure
 ```
 Payments/
+├── ai_payment_api.py            # RESTful API
 ├── ai_payment_core.py           # Core API and payment processing logic
 ├── ai_payment_db.py             # PostgreSQL database
 ├── ai_payment_data.py           # Data generation and model training helper

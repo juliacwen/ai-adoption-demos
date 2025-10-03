@@ -2,7 +2,7 @@
 """
 ai_payment_gui.py
 Author: Julia Wen
-Date: 2025-09-29
+Date: 2025-10-01
 Description: GUI for AI payment demo. All Postgres DB saving is handled by ai_payment_db.py.
 Includes Admin panel to view saved predictions.
 """
