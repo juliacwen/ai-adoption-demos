@@ -318,8 +318,7 @@ def process_payment(transaction: Dict[str,Any],
     )
 
     if not valid:
-        reason_parts = [m for m in debug_msgs if "Validation failed" in m or 
-m.startswith("Validation:")]
+        reason_parts = [m for m in debug_msgs if "Validation failed" in m or m.startswith("Validation:")]
         if not reason_parts:
             reason_parts = [reason or "Validation failed"]
         reason_text = "; ".join(reason_parts)
@@ -352,8 +351,9 @@ m.startswith("Validation:")]
     debug_msgs.append(f"Decision: {decision} reason: {reason_text}")
 
     txn_id = None
+    # ALWAYS assign a transaction ID
+    txn_id = "TXN-" + uuid.uuid4().hex[:10].upper()
     if decision == "Approved ✅":
-        txn_id = "TXN-" + uuid.uuid4().hex[:10].upper()
         record = dict(txn)
         record.update({
             "txn_id": txn_id,
@@ -385,6 +385,9 @@ def process_refund(txn_id: str, transactions_db: dict) -> bool:
         return False
     if txn_id in transactions_db:
         rec = transactions_db[txn_id]
+        if rec.get("decision") != "Approved ✅":
+            # Only allow refund for Approved transactions
+            return False
         if rec.get("refunded", False):
             return False
         rec["refunded"] = True
@@ -400,14 +403,23 @@ def process_batch(transactions_list: List[dict], transactions_db: Optional[dict]
 False) -> Tuple[List[dict], dict]:
     """
     Process batch transactions; returns (results_list, counts_dict)
+    Ensures all transactions (Approved, Flagged, Rejected) have txn_id.
     """
     results = []
     counts = {"Approved ✅":0, "Flagged ⚠️":0, "Rejected ❌":0}
     for t in transactions_list:
+        # Process single transaction
         res = process_payment(t, transactions_db, debug=debug)
         decision = res.get("decision")
         if decision in counts:
             counts[decision] += 1
+
+        # Include all txn_ids, even for rejected/flagged
+        txn_id = res.get("txn_id")
+        if not txn_id:
+            # Safety fallback (should not happen with fixed process_payment)
+            txn_id = "TXN-" + uuid.uuid4().hex[:10].upper()
+
         results.append({
             "txn_id": res.get("txn_id"),
             "name": t.get("name",""),
