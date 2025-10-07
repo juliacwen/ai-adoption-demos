@@ -33,11 +33,6 @@ The PostgreSQL database stores the same fields as the CSV:
 `name, email, amount, payment_method, card_number, cvv, expiry, token, device, country, hour, ip_risk, past_txns, fraud_prob_label, outcome`  
 It is required for the GUI to display transaction history and fraud decisions.
 
-### Notes
-- All card numbers are test-only (see [Stripe testing](https://stripe.com/docs/testing)).
-- No real payments are processed.
-- The demo is for educational purposes and illustrating AI adoption in payment workflows.
-
 ## Installation
 1. Clone the repository:
 ```bash
@@ -136,6 +131,7 @@ it means the Docker daemon or Postgres container is not yet running.
 
 ## Notes
 - AI tools were used in assisting with reviewing, refining, and enhancing portions of the codebase.
+- All card numbers are test-only (see [Stripe testing](https://stripe.com/docs/testing)).
 - Synthetic transaction generation and labeling are fully configurable via `Payments/ai_payment_data.py`.
 
 ---
