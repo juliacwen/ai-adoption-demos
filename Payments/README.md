@@ -7,7 +7,7 @@
 **License:** MIT
 
 ## Overview
-This repository demonstrates AI adoption in payment workflows. The `Payments` module provides a **Streamlit GUI** for processing payments, including single transactions, refund and batch CSV uploads, with fraud detection powered by a trained model, PostgreSQL database, and yaml config, and RESTful API with FastAPI.
+This repository demonstrates AI adoption in payment workflows. The Payments module provides a Streamlit GUI for processing payments, including single transactions, refund and batch CSV uploads, with fraud detection powered by a trained model, PostgreSQL database running in Docker, yaml config, and RESTful API with FastAPI.
 
 ### Features
 - Single transaction input (card or wallet)
@@ -83,11 +83,64 @@ Payments/
 - Retrain the model by deleting `fraud_model_artifact.joblib`.
 - PostgreSQL must be running for transaction history display and GUI functionality.
 
+---
+
+## Database Setup (PostgreSQL via Docker)
+
+The Payments module requires a local PostgreSQL database.  
+If not already running, start or recreate it using Docker.
+
+### 1. Create the container
+```bash
+docker run -d \
+  --name payments-pg \
+  -e POSTGRES_USER=demo_user \
+  -e POSTGRES_PASSWORD=demo_pass \
+  -e POSTGRES_DB=payments \
+  -p 5432:5432 \
+  postgres:15
+```
+
+### 2. Verify the container
+```bash
+docker ps -a
+```
+You should see a container named `payments-pg` with port `5432` exposed.
+
+### 3. Access the Postgres shell (optional)
+If `psql` is not installed locally, use it via Docker:
+```bash
+docker exec -it payments-pg psql -U demo_user -d payments
+```
+
+### 4. Manual restart sequence (after reboot)
+```bash
+# Start Docker Desktop (must be running)
+docker start payments-pg
+
+# Confirm container is running
+docker ps
+
+# Then start the API
+source venv/bin/activate
+uvicorn Payments.ai_payment_api:app --reload
+```
+
+If you see an error like:
+```
+connection to server at "localhost", port 5432 failed: Connection refused
+```
+it means the Docker daemon or Postgres container is not yet running.
+
+---
+
 ## Notes
 - AI tools were used in assisting with reviewing, refining, and enhancing portions of the codebase.
 - Synthetic transaction generation and labeling are fully configurable via `Payments/ai_payment_data.py`.
 
 ---
 
-**MIT License**  
-This repo contains **practical AI demos** showing how AI can be applied in real-world workflows.
+## License
+MIT License  
+© 2025 Julia Wen (wendigilane@gmail.com)
+
